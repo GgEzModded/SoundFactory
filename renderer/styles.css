@@ -1,0 +1,275 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: radial-gradient(
+      circle at top left,
+      rgba(120, 80, 255, 0.18),
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at bottom right,
+      rgba(0, 180, 255, 0.12),
+      transparent 45%
+    ),
+    linear-gradient(
+      180deg,
+      #070b1c 0%,
+      #0b122e 45%,
+      #050814 100%
+    );
+  color: #e6e9f0;
+  overflow: hidden;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    circle at center,
+    transparent 60%,
+    rgba(0, 0, 0, 0.45) 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+#app,
+#soundboard,
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/*----------------------------------------------*/
+
+h1 {
+  margin: 20px;
+}
+
+#main {
+  padding-right: 300px;
+  min-height: 100%;
+}
+
+#side-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 280px;
+  height: 100%;
+  padding: 20px;
+  background: linear-gradient(180deg, rgba(18, 22, 45, 0.96), rgba(9, 12, 28, 0.96));
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: -12px 0 30px rgba(0, 0, 0, 0.55);
+  z-index: 2;
+}
+
+#side-panel h2 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+}
+
+#side-panel p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #cfd6ff;
+}
+
+#soundboard {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  padding: 24px;
+}
+
+
+.sound-card {
+  position: relative;
+  background: #2a2a2a;
+  border-radius: 8px;
+  padding: 15px;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.2s;
+  min-height: 10px; /* ensures card has height */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+.sound-card:hover {
+  background: #3a3a3a;
+}
+.sound-name {
+  color: white;
+  font-size: 14px;
+  word-break: break-word;
+}
+
+
+.remove-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: #3d3b3b00;
+  border: none;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.remove-btn:hover {
+  background: #ff1f1f;
+}
+
+#addSound {
+  margin: 20px;
+  padding: 10px 20px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.rename-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px;
+  font-size: 14px;
+}
+
+.sound-controls {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.volume-slider {
+  flex: 1;
+}
+
+.stop-btn {
+  background: #444;
+  border: none;
+  color: white;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.stop-btn:hover {
+  background: #666;
+}
+
+#global-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+}
+
+#global-controls input[type="range"] {
+  flex: 1;
+}
+
+
+
+
+/*------------------------*/
+/*SOUNDCARD ITEMS*/
+.sound-tile {
+  width: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+
+/* Image container */
+.sound-image-wrapper {
+  width: 100px;
+  height: 100px;
+  border-radius: 14px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.06),
+    rgba(255, 255, 255, 0.01)
+  );
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Hover / press feedback */
+.sound-image-wrapper:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 14px 36px rgba(0, 0, 0, 0.7),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.sound-image-wrapper:active {
+  transform: scale(0.96);
+}
+
+/* Image itself */
+.sound-image {
+  width: 60%;
+  height: 60%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+/* Title text */
+.sound-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f1f4ff;
+  text-align: center;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Hotkey badge */
+.sound-hotkey {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #cfd6ff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+/*PLAYING STATE*/
+.sound-tile.playing .sound-image-wrapper {
+  box-shadow:
+    0 0 0 2px rgba(140, 100, 255, 0.9),
+    0 0 20px rgba(140, 100, 255, 0.6),
+    0 10px 30px rgba(0, 0, 0, 0.8);
+}
+
+.sound-tile.playing .sound-image {
+  filter: brightness(1.15);
+}
