@@ -2,7 +2,57 @@ const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const path = require("path");
 const fs = require("fs");
 
-const dataPath = path.join(__dirname, "data", "sounds.json");
+const dataDir = path.join(__dirname, "data");
+const localDataPath = path.join(dataDir, "sounds.local.json");
+const exampleDataPath = path.join(dataDir, "sounds.example.json");
+const defaultData = { sounds: [] };
+
+function normalizeData(raw) {
+  if (Array.isArray(raw)) {
+    return { sounds: raw };
+  }
+
+  if (raw && Array.isArray(raw.sounds)) {
+    return { sounds: raw.sounds };
+  }
+
+  return { sounds: [] };
+}
+
+function readDataFile(filePath) {
+  if (!fs.existsSync(filePath)) return null;
+
+  try {
+    const raw = fs.readFileSync(filePath, "utf-8");
+    return normalizeData(JSON.parse(raw));
+  } catch (err) {
+    console.error(`Error reading ${filePath}:`, err);
+    return null;
+  }
+}
+
+function writeLocalData(data) {
+  fs.writeFileSync(localDataPath, JSON.stringify(data, null, 2));
+}
+
+function loadData() {
+  const localData = readDataFile(localDataPath);
+  if (localData) return localData;
+
+  const exampleData = readDataFile(exampleDataPath);
+  if (exampleData) return exampleData;
+
+  writeLocalData(defaultData);
+  return { sounds: [] };
+}
+
+function loadWritableData() {
+  const localData = readDataFile(localDataPath);
+  if (localData) return localData;
+
+  const exampleData = readDataFile(exampleDataPath);
+  return exampleData || { sounds: [] };
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -29,55 +79,49 @@ ipcMain.handle("add-sound", async () => {
   const filePath = result.filePaths[0];
   const name = path.basename(filePath);
 
-  const sounds = JSON.parse(fs.readFileSync(dataPath, "utf-8"));
-  sounds.push({ name, filePath });
+  const data = loadWritableData();
+  data.sounds.push({ name, filePath });
 
-  fs.writeFileSync(dataPath, JSON.stringify(sounds, null, 2));
+  writeLocalData(data);
 
   return { name, filePath };
 });
 
 ipcMain.handle("load-sounds", () => {
-  if (!fs.existsSync(dataPath)) return [];
-  return JSON.parse(fs.readFileSync(dataPath, "utf-8"));
+  const data = loadData();
+  return data.sounds;
 });
+
 ipcMain.handle("remove-sound", (event, filePath) => {
   try {
-    if (!fs.existsSync(dataPath)) return;
-
-    const sounds = JSON.parse(fs.readFileSync(dataPath, "utf-8"));
-    const index = sounds.findIndex(sound => sound.filePath === filePath);
+    const data = loadWritableData();
+    const index = data.sounds.findIndex(sound => sound.filePath === filePath);
     if (index === -1) return;
-    sounds.splice(index, 1);
+    data.sounds.splice(index, 1);
 
-    fs.writeFileSync(dataPath, JSON.stringify(sounds, null, 2));
+    writeLocalData(data);
   } catch (err) {
     console.error("Error removing sound:", err);
   }
 });
 
-
 ipcMain.handle("rename-sound", (event, filePath, newName) => {
   try {
-    if (!fs.existsSync(dataPath)) return;
+    const data = loadWritableData();
 
-    const sounds = JSON.parse(fs.readFileSync(dataPath, "utf-8"));
-
-    const sound = sounds.find(s => s.filePath === filePath);
+    const sound = data.sounds.find(s => s.filePath === filePath);
     if (sound) {
       sound.name = newName;
     }
 
-    fs.writeFileSync(dataPath, JSON.stringify(sounds, null, 2));
+    writeLocalData(data);
   } catch (err) {
     console.error("Error renaming sound:", err);
   }
 });
-
 
 app.whenReady().then(createWindow);
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
-
