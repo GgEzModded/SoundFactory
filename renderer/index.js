@@ -1,5 +1,8 @@
 const soundboard = document.getElementById("soundboard");
 const addSoundBtn = document.getElementById("addSound");
+const minimizeWindowBtn = document.getElementById("window-minimize");
+const maximizeWindowBtn = document.getElementById("window-maximize");
+const closeWindowBtn = document.getElementById("window-close");
 const allAudio = [];
 let currentPlayingAudio = null;
 let currentPlayingCard = null;
@@ -18,6 +21,44 @@ const progressFill = document.getElementById("progress-fill");
 const currentTimeDisplay = document.getElementById("current-time");
 const totalTimeDisplay = document.getElementById("total-time");
 const progressBar = document.querySelector(".progress-bar");
+
+if (minimizeWindowBtn) {
+  minimizeWindowBtn.addEventListener("click", () => {
+    if (window.electronAPI && window.electronAPI.minimizeWindow) {
+      window.electronAPI.minimizeWindow();
+    }
+  });
+}
+
+if (maximizeWindowBtn) {
+  maximizeWindowBtn.addEventListener("click", () => {
+    if (window.electronAPI && window.electronAPI.toggleMaximize) {
+      window.electronAPI.toggleMaximize();
+    }
+  });
+}
+
+if (maximizeWindowBtn && window.electronAPI) {
+  if (window.electronAPI.onWindowMaximized) {
+    window.electronAPI.onWindowMaximized((isMaximized) => {
+      maximizeWindowBtn.classList.toggle("is-maximized", isMaximized);
+    });
+  }
+
+  if (window.electronAPI.getIsMaximized) {
+    window.electronAPI.getIsMaximized().then((isMaximized) => {
+      maximizeWindowBtn.classList.toggle("is-maximized", isMaximized);
+    });
+  }
+}
+
+if (closeWindowBtn) {
+  closeWindowBtn.addEventListener("click", () => {
+    if (window.electronAPI && window.electronAPI.closeWindow) {
+      window.electronAPI.closeWindow();
+    }
+  });
+}
 
 // Checkboxes
 const checkStopOthers = document.getElementById("check-stop-others");

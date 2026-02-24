@@ -58,12 +58,22 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1300,
     height: 800,
+    frame: false,
+    backgroundColor: "#070b1c",
     webPreferences: {
       preload: path.join(__dirname, "preload.js")
     }
   });
 
   win.loadFile("renderer/index.html");
+
+  win.on("maximize", () => {
+    win.webContents.send("window-maximized", true);
+  });
+
+  win.on("unmaximize", () => {
+    win.webContents.send("window-maximized", false);
+  });
 }
 
 ipcMain.handle("add-sound", async () => {
@@ -118,6 +128,31 @@ ipcMain.handle("rename-sound", (event, filePath, newName) => {
   } catch (err) {
     console.error("Error renaming sound:", err);
   }
+});
+
+ipcMain.on("window-close", (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) win.close();
+});
+
+ipcMain.on("window-minimize", (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) win.minimize();
+});
+
+ipcMain.on("window-toggle-maximize", (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win) return;
+  if (win.isMaximized()) {
+    win.unmaximize();
+  } else {
+    win.maximize();
+  }
+});
+
+ipcMain.handle("window-is-maximized", (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  return win ? win.isMaximized() : false;
 });
 
 app.whenReady().then(createWindow);

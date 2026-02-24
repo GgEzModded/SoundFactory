@@ -6,10 +6,23 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <div id="titlebar">
+    <div class="titlebar-title">Soundboard</div>
+    <div class="window-controls">
+      <button id="window-minimize" class="window-control-btn window-control-minimize" aria-label="Minimize window" title="Minimize"></button>
+      <button id="window-maximize" class="window-control-btn window-control-maximize" aria-label="Maximize window" title="Maximize"></button>
+      <button id="window-close" class="window-control-btn" aria-label="Close window" title="Close"></button>
+    </div>
+  </div>
+  <aside id="left-panel">
+    <h2>Quick Panel</h2>
+    <p>Pin favorites or global controls here.</p>
+  </aside>
   <div id="main">
-    <h1>Soundboard</h1>
-
-    <button id="addSound">+ Add Sound</button>
+    <div id="top-panel">
+      <h1>Soundboard</h1>
+      <button id="addSound">+ Add Sound</button>
+    </div>
     <div id="soundboard"></div>
   </div>
 
