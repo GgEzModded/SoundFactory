@@ -1,7 +1,6 @@
 const soundboard = document.getElementById("soundboard");
 const addSoundBtn = document.getElementById("addSound");
 const topPanelTitle = document.getElementById("top-panel-title");
-const titlebarTitle = document.querySelector(".titlebar-title");
 const minimizeWindowBtn = document.getElementById("window-minimize");
 const maximizeWindowBtn = document.getElementById("window-maximize");
 const closeWindowBtn = document.getElementById("window-close");
@@ -163,8 +162,8 @@ function applyAppTitle(title) {
   const normalizedTitle =
     typeof title === "string" && title.trim() ? title.trim() : DEFAULT_APP_TITLE;
 
-  if (titlebarTitle) {
-    titlebarTitle.textContent = normalizedTitle;
+  if (topPanelTitle) {
+    topPanelTitle.textContent = normalizedTitle;
   }
 }
 
