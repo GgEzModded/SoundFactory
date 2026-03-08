@@ -2,12 +2,12 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>SoundFactory</title>
+  <title>Soundboard</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div id="titlebar">
-    <div class="titlebar-title">SoundFactory</div>
+    <div class="titlebar-title">Soundboard</div>
     <div class="window-controls">
       <button id="window-minimize" class="window-control-btn window-control-minimize" aria-label="Minimize window" title="Minimize"></button>
       <button id="window-maximize" class="window-control-btn window-control-maximize" aria-label="Maximize window" title="Maximize"></button>
@@ -73,86 +73,12 @@
           <div class="reproduction-icon"></div>
           Reproduction Mode
         </div>
-        <div class="mode-toggle-group" role="radiogroup" aria-label="Reproduction mode">
-          <button
-            type="button"
-            class="mode-toggle is-active"
-            role="radio"
-            aria-checked="true"
-            data-mode="play-overlap"
-          >
-            <span class="mode-icon">
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <polygon class="icon-fill" points="3,5 3,19 13,12"></polygon>
-                <polygon class="icon-fill" points="9,5 9,19 19,12"></polygon>
-              </svg>
-            </span>
-            <span class="mode-label">Play and Overlap</span>
-          </button>
-          <button
-            type="button"
-            class="mode-toggle"
-            role="radio"
-            aria-checked="false"
-            data-mode="play-pause"
-          >
-            <span class="mode-icon">
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <polygon class="icon-fill" points="3,5 3,19 12,12"></polygon>
-                <rect class="icon-fill" x="14" y="6" width="3.5" height="12" rx="1"></rect>
-                <rect class="icon-fill" x="19" y="6" width="3.5" height="12" rx="1"></rect>
-              </svg>
-            </span>
-            <span class="mode-label">Play and Pause</span>
-          </button>
-          <button
-            type="button"
-            class="mode-toggle"
-            role="radio"
-            aria-checked="false"
-            data-mode="play-stop"
-          >
-            <span class="mode-icon">
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <polygon class="icon-fill" points="3,5 3,19 12,12"></polygon>
-                <rect class="icon-fill" x="15" y="7" width="7" height="10" rx="1"></rect>
-              </svg>
-            </span>
-            <span class="mode-label">Play and Stop</span>
-          </button>
-          <button
-            type="button"
-            class="mode-toggle"
-            role="radio"
-            aria-checked="false"
-            data-mode="play-restart"
-          >
-            <span class="mode-icon">
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <polygon class="icon-fill" points="3,5 3,19 11,12"></polygon>
-                <path d="M16 8a4.5 4.5 0 1 1-2.2 8.4"></path>
-                <polyline points="13.5,7.5 16.5,8 15.5,5"></polyline>
-              </svg>
-            </span>
-            <span class="mode-label">Play and Restart</span>
-          </button>
-          <button
-            type="button"
-            class="mode-toggle"
-            role="radio"
-            aria-checked="false"
-            data-mode="push-loop"
-          >
-            <span class="mode-icon">
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M4.5 12a4 4 0 0 1 4-4h6.5"></path>
-                <polyline points="13.5,4.5 18,8 13.5,11.5"></polyline>
-                <path d="M19.5 12a4 4 0 0 1-4 4H9"></path>
-                <polyline points="10.5,19.5 6,16 10.5,12.5"></polyline>
-              </svg>
-            </span>
-            <span class="mode-label">Push to Loop</span>
-          </button>
+        <div class="control-buttons">
+          <button class="control-btn backward" id="btn-backward" title="Rewind 10s"></button>
+          <button class="control-btn play" id="btn-play" title="Play"></button>
+          <button class="control-btn pause hidden" id="btn-pause" title="Pause"></button>
+          <button class="control-btn stop" id="btn-stop" title="Stop"></button>
+          <button class="control-btn forward" id="btn-forward" title="Forward 10s"></button>
         </div>
         
         <div class="progress-section">
