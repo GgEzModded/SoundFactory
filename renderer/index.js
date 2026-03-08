@@ -10,6 +10,7 @@ const soundHotkeyMap = new Map();
 let currentPlayingAudio = null;
 let currentPlayingCard = null;
 let globalVolume = 1;
+let currentReproductionMode = "play-overlap";
 const DEFAULT_APP_TITLE = "Soundboard";
 
 // Panel elements
@@ -415,15 +416,18 @@ function syncMuteOthers(activeAudio = null) {
 }
 
 function stopAllExcept(audioToKeep, cardToKeep) {
-  allAudio.forEach((audio) => {
+  allAudio.slice().forEach((audio) => {
     if (audio !== audioToKeep) {
       audio.pause();
       audio.currentTime = 0;
+      unmarkCardPlaying(audio._parentCard, audio);
+      cleanupEphemeralAudio(audio);
     }
   });
 
   document.querySelectorAll(".sound-card").forEach((card) => {
-    if (card !== cardToKeep) {
+    if (card !== cardToKeep && card._activeInstances) {
+      card._activeInstances.clear();
       card.classList.remove("playing");
     }
   });
@@ -436,13 +440,80 @@ function unregisterAudio(audioToRemove) {
   }
 }
 
+function ensureCardAudioState(card) {
+  if (!card) {
+    return;
+  }
+
+  if (!card._audioInstances) {
+    card._audioInstances = new Set();
+  }
+
+  if (!card._activeInstances) {
+    card._activeInstances = new Set();
+  }
+}
+
+function markCardPlaying(card, audio) {
+  if (!card || !audio) {
+    return;
+  }
+
+  ensureCardAudioState(card);
+  card._activeInstances.add(audio);
+  card.classList.add("playing");
+}
+
+function unmarkCardPlaying(card, audio) {
+  if (!card) {
+    return;
+  }
+
+  ensureCardAudioState(card);
+  if (audio) {
+    card._activeInstances.delete(audio);
+  } else {
+    card._activeInstances.clear();
+  }
+
+  if (card._activeInstances.size === 0) {
+    card.classList.remove("playing");
+  }
+}
+
+function cleanupEphemeralAudio(audio) {
+  if (!audio || !audio._isEphemeral) {
+    return;
+  }
+
+  unregisterAudio(audio);
+  if (audio._parentCard && audio._parentCard._audioInstances) {
+    audio._parentCard._audioInstances.delete(audio);
+  }
+}
+
+function updateCardBaseVolume(card, value) {
+  if (!card) {
+    return;
+  }
+
+  const clamped = clampVolume(value);
+  card._baseVolume = clamped;
+  ensureCardAudioState(card);
+  card._audioInstances.forEach((audio) => {
+    setAudioBaseVolume(audio, clamped);
+  });
+
+  if (card._cardVolumeSlider) {
+    card._cardVolumeSlider.value = Math.round(clamped * 100);
+  }
+}
+
 // Update panel UI
 function updatePanelUI() {
   if (!currentPlayingAudio) {
     audioPanel.classList.add("hidden");
     currentSoundName.textContent = "No Sound Playing";
-    btnPlay.classList.remove("hidden");
-    btnPause.classList.add("hidden");
     progressFill.style.width = "0%";
     currentTimeDisplay.textContent = "0:00";
     totalTimeDisplay.textContent = "0:00";
@@ -450,14 +521,42 @@ function updatePanelUI() {
   }
 
   audioPanel.classList.remove("hidden");
-  
-  if (currentPlayingAudio.paused) {
-    btnPlay.classList.remove("hidden");
-    btnPause.classList.add("hidden");
-  } else {
-    btnPlay.classList.add("hidden");
-    btnPause.classList.remove("hidden");
+}
+
+const reproductionModeGroup = document.querySelector(".mode-toggle-group");
+
+if (reproductionModeGroup) {
+  const modeButtons = Array.from(
+    reproductionModeGroup.querySelectorAll(".mode-toggle")
+  );
+
+  const setActiveModeButton = (activeButton) => {
+    modeButtons.forEach((button) => {
+      const isActive = button === activeButton;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-checked", String(isActive));
+    });
+    if (activeButton && activeButton.dataset.mode) {
+      currentReproductionMode = activeButton.dataset.mode;
+    }
+  };
+
+  if (modeButtons.length > 0) {
+    const initialButton =
+      modeButtons.find((button) => button.classList.contains("is-active")) ||
+      modeButtons[0];
+    setActiveModeButton(initialButton);
+
+    modeButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        setActiveModeButton(button);
+      });
+    });
   }
+}
+
+function getCurrentReproductionMode() {
+  return currentReproductionMode;
 }
 
 // Setup panel controls
@@ -546,61 +645,6 @@ if (editSoundNameBtn) {
   editSoundNameBtn.addEventListener("click", startPanelRename);
 }
 
-// Panel button handlers
-btnPlay.onclick = () => {
-  if (currentPlayingAudio) {
-    if (checkStopOthers.classList.contains("checked")) {
-      stopAllExcept(currentPlayingAudio, currentPlayingCard);
-    }
-    currentPlayingAudio.play();
-    if (currentPlayingCard) {
-      currentPlayingCard.classList.add("playing");
-    }
-    syncMuteOthers(currentPlayingAudio);
-    updatePanelUI();
-  }
-};
-
-btnPause.onclick = () => {
-  if (currentPlayingAudio) {
-    currentPlayingAudio.pause();
-    if (currentPlayingCard) {
-      currentPlayingCard.classList.remove("playing");
-    }
-    syncMuteOthers(null);
-    updatePanelUI();
-  }
-};
-
-btnStop.onclick = () => {
-  if (currentPlayingAudio) {
-    currentPlayingAudio.pause();
-    currentPlayingAudio.currentTime = 0;
-    if (currentPlayingCard) {
-      currentPlayingCard.classList.remove("playing");
-    }
-    currentPlayingAudio = null;
-    currentPlayingCard = null;
-    syncMuteOthers(null);
-    updatePanelUI();
-  }
-};
-
-btnForward.onclick = () => {
-  if (currentPlayingAudio) {
-    currentPlayingAudio.currentTime = Math.min(
-      currentPlayingAudio.currentTime + 10,
-      currentPlayingAudio.duration
-    );
-  }
-};
-
-btnBackward.onclick = () => {
-  if (currentPlayingAudio) {
-    currentPlayingAudio.currentTime = Math.max(currentPlayingAudio.currentTime - 10, 0);
-  }
-};
-
 // Progress bar click
 progressBar.onclick = (e) => {
   if (currentPlayingAudio && currentPlayingAudio.duration) {
@@ -614,9 +658,11 @@ progressBar.onclick = (e) => {
 panelVolume.oninput = () => {
   volumeDisplay.textContent = panelVolume.value;
   if (currentPlayingAudio) {
-    setAudioBaseVolume(currentPlayingAudio, panelVolume.value / 100);
-    if (currentPlayingAudio._cardVolumeSlider) {
-      currentPlayingAudio._cardVolumeSlider.value = panelVolume.value;
+    const nextValue = panelVolume.value / 100;
+    if (currentPlayingAudio._parentCard) {
+      updateCardBaseVolume(currentPlayingAudio._parentCard, nextValue);
+    } else {
+      setAudioBaseVolume(currentPlayingAudio, nextValue);
     }
   }
 };
@@ -717,6 +763,8 @@ function createSoundCard(sound) {
   const card = document.createElement("div");
   card.className = "sound-card sound-tile";
   card.dataset.hotkey = initialHotkey;
+  card._filePath = filePath;
+  ensureCardAudioState(card);
 
   const label = document.createElement("div");
   label.className = "sound-name sound-title";
@@ -731,12 +779,26 @@ function createSoundCard(sound) {
   removeBtn.className = "remove-btn";
   removeBtn.textContent = "x";
 
+  const volume = document.createElement("input");
+  volume.type = "range";
+  volume.min = 0;
+  volume.max = 100;
+  volume.value = 100;
+  volume.className = "volume-slider";
+  card._cardVolumeSlider = volume;
+
   const audio = new Audio(filePath);
   audio._baseVolume = 1;
   audio._isMutedByOption = false;
   audio._filePath = filePath;
+  audio._parentCard = card;
+  audio._isEphemeral = false;
+  audio._cardVolumeSlider = volume;
   applyAudioVolume(audio);
   allAudio.push(audio);
+  card._audioInstances.add(audio);
+  card._primaryAudio = audio;
+  card._baseVolume = audio._baseVolume;
 
   const imageWrapper = document.createElement("div");
   imageWrapper.className = "sound-image-wrapper";
@@ -746,75 +808,258 @@ function createSoundCard(sound) {
   imageIcon.textContent = "PLAY";
   imageWrapper.appendChild(imageIcon);
 
-  imageWrapper.addEventListener("click", () => {
-    const wasPlaying = !audio.paused;
-
-    if (!wasPlaying) {
-      if (checkStopOthers.classList.contains("checked")) {
-        stopAllExcept(audio, card);
+  const registerAudioEnded = (targetAudio) => {
+    targetAudio.addEventListener("ended", () => {
+      if (checkLoop.classList.contains("checked") && currentPlayingAudio === targetAudio) {
+        targetAudio.currentTime = 0;
+        targetAudio.play();
+        syncMuteOthers(targetAudio);
+        return;
       }
-      audio.currentTime = 0;
-      audio.play();
-      card.classList.add("playing");
-      setupPanelControls(audio, card, label.textContent);
-      syncMuteOthers(audio);
-    } else {
-      audio.pause();
-      audio.currentTime = 0;
-      card.classList.remove("playing");
-      if (currentPlayingAudio === audio) {
+
+      unmarkCardPlaying(card, targetAudio);
+      if (currentPlayingAudio === targetAudio) {
         currentPlayingAudio = null;
         currentPlayingCard = null;
         updatePanelUI();
       }
       syncMuteOthers(null);
-    }
-  });
+      cleanupEphemeralAudio(targetAudio);
+    });
+  };
 
-  audio.addEventListener("ended", () => {
-    if (checkLoop.classList.contains("checked") && currentPlayingAudio === audio) {
-      audio.currentTime = 0;
-      audio.play();
-      syncMuteOthers(audio);
-    } else {
-      card.classList.remove("playing");
-      if (currentPlayingAudio === audio) {
-        currentPlayingAudio = null;
-        currentPlayingCard = null;
-        updatePanelUI();
-      }
-      syncMuteOthers(null);
-    }
-  });
+  registerAudioEnded(audio);
 
-  const volume = document.createElement("input");
-  volume.type = "range";
-  volume.min = 0;
-  volume.max = 100;
-  volume.value = 100;
-  volume.className = "volume-slider";
-  audio._cardVolumeSlider = volume;
-  volume.oninput = (e) => {
-    setAudioBaseVolume(audio, e.target.value / 100);
+  const createEphemeralAudio = () => {
+    const instance = new Audio(filePath);
+    const baseVolume =
+      typeof card._baseVolume === "number" ? card._baseVolume : audio._baseVolume ?? 1;
+    instance._baseVolume = baseVolume;
+    instance._isMutedByOption = false;
+    instance._filePath = filePath;
+    instance._parentCard = card;
+    instance._isEphemeral = true;
+    instance._cardVolumeSlider = volume;
+    applyAudioVolume(instance);
+    allAudio.push(instance);
+    card._audioInstances.add(instance);
+    registerAudioEnded(instance);
+    return instance;
+  };
+
+  const startPlayback = (targetAudio, options = {}) => {
+    if (!targetAudio) {
+      return;
+    }
+
+    if (checkStopOthers.classList.contains("checked")) {
+      stopAllExcept(targetAudio, card);
+    }
+
+    if (options.restart) {
+      targetAudio.currentTime = 0;
+    }
+
+    targetAudio.play();
+    markCardPlaying(card, targetAudio);
+    setupPanelControls(targetAudio, card, label.textContent);
+    syncMuteOthers(targetAudio);
+  };
+
+  const pausePlayback = (targetAudio, options = {}) => {
+    if (!targetAudio) {
+      return;
+    }
+
+    targetAudio.pause();
+    if (options.reset) {
+      targetAudio.currentTime = 0;
+    }
+    unmarkCardPlaying(card, targetAudio);
+
+    if (options.clearCurrent && currentPlayingAudio === targetAudio) {
+      currentPlayingAudio = null;
+      currentPlayingCard = null;
+    }
+
+    syncMuteOthers(null);
+    updatePanelUI();
+    cleanupEphemeralAudio(targetAudio);
+  };
+
+  const handlePlayOverlap = () => {
+    const instance = createEphemeralAudio();
+    if (!instance) {
+      return;
+    }
+    startPlayback(instance, { restart: true });
+  };
+
+  const handlePlayPause = () => {
+    if (!audio.paused) {
+      pausePlayback(audio, { reset: false, clearCurrent: false });
+      return;
+    }
+
+    const shouldRestart =
+      audio.ended || (audio.duration && audio.currentTime >= audio.duration);
+    startPlayback(audio, { restart: shouldRestart });
+  };
+
+  const handlePlayStop = () => {
+    if (!audio.paused) {
+      pausePlayback(audio, { reset: true, clearCurrent: true });
+      return;
+    }
+
+    startPlayback(audio, { restart: true });
+  };
+
+  const handlePlayRestart = () => {
+    startPlayback(audio, { restart: true });
+  };
+
+  const handleModeTrigger = () => {
+    const mode = getCurrentReproductionMode();
+    if (mode === "push-loop") {
+      return;
+    }
+
+    switch (mode) {
+      case "play-overlap":
+        handlePlayOverlap();
+        break;
+      case "play-pause":
+        handlePlayPause();
+        break;
+      case "play-stop":
+        handlePlayStop();
+        break;
+      case "play-restart":
+        handlePlayRestart();
+        break;
+      default:
+        handlePlayStop();
+        break;
+    }
+  };
+
+  let pushLoopActive = false;
+
+  const startPushLoop = () => {
+    if (pushLoopActive) {
+      return;
+    }
+    pushLoopActive = true;
+
+    if (checkStopOthers.classList.contains("checked")) {
+      stopAllExcept(audio, card);
+    }
+
+    audio._previousLoop = audio.loop;
+    audio.loop = true;
+    audio.currentTime = 0;
+    audio.play();
+    markCardPlaying(card, audio);
+    setupPanelControls(audio, card, label.textContent);
+    syncMuteOthers(audio);
+  };
+
+  const stopPushLoop = () => {
+    if (!pushLoopActive) {
+      return;
+    }
+    pushLoopActive = false;
+
+    audio.loop = audio._previousLoop ?? false;
+    audio.pause();
+    audio.currentTime = 0;
+    unmarkCardPlaying(card, audio);
     if (currentPlayingAudio === audio) {
+      currentPlayingAudio = null;
+      currentPlayingCard = null;
+    }
+    syncMuteOthers(null);
+    updatePanelUI();
+  };
+
+  card._handleModeTrigger = handleModeTrigger;
+  card._startPushLoop = startPushLoop;
+  card._stopPushLoop = stopPushLoop;
+
+  imageWrapper.addEventListener("click", () => {
+    if (getCurrentReproductionMode() === "push-loop") {
+      return;
+    }
+    handleModeTrigger();
+  });
+
+  imageWrapper.addEventListener("pointerdown", (event) => {
+    if (getCurrentReproductionMode() !== "push-loop") {
+      return;
+    }
+    event.preventDefault();
+    if (imageWrapper.setPointerCapture) {
+      imageWrapper.setPointerCapture(event.pointerId);
+    }
+    startPushLoop();
+  });
+
+  imageWrapper.addEventListener("pointerup", (event) => {
+    if (getCurrentReproductionMode() !== "push-loop") {
+      return;
+    }
+    stopPushLoop();
+    if (imageWrapper.hasPointerCapture && imageWrapper.hasPointerCapture(event.pointerId)) {
+      imageWrapper.releasePointerCapture(event.pointerId);
+    }
+  });
+
+  imageWrapper.addEventListener("pointercancel", (event) => {
+    if (getCurrentReproductionMode() !== "push-loop") {
+      return;
+    }
+    stopPushLoop();
+    if (imageWrapper.hasPointerCapture && imageWrapper.hasPointerCapture(event.pointerId)) {
+      imageWrapper.releasePointerCapture(event.pointerId);
+    }
+  });
+
+  volume.oninput = (e) => {
+    const nextValue = e.target.value / 100;
+    updateCardBaseVolume(card, nextValue);
+    if (currentPlayingAudio && currentPlayingAudio._parentCard === card) {
       panelVolume.value = e.target.value;
       volumeDisplay.textContent = e.target.value;
     }
   };
 
-  removeBtn.onclick = async (e) => {
-    e.stopPropagation();
-    audio.pause();
-    unregisterAudio(audio);
-    if (currentPlayingAudio === audio) {
+  const removeCard = async () => {
+    if (card._audioInstances) {
+      card._audioInstances.forEach((instance) => {
+        instance.pause();
+        instance.currentTime = 0;
+        unregisterAudio(instance);
+      });
+      card._audioInstances.clear();
+    }
+
+    unmarkCardPlaying(card);
+    if (currentPlayingAudio && currentPlayingAudio._parentCard === card) {
       currentPlayingAudio = null;
       currentPlayingCard = null;
       syncMuteOthers(null);
       updatePanelUI();
     }
+
     await window.electronAPI.removeSound(filePath);
     card.remove();
     rebuildHotkeyMap();
+  };
+
+  removeBtn.onclick = async (e) => {
+    e.stopPropagation();
+    await removeCard();
   };
 
   label.ondblclick = (e) => {
@@ -915,7 +1160,7 @@ function createSoundCard(sound) {
       if (newName) {
         label.textContent = newName;
         await window.electronAPI.renameSound(filePath, newName);
-        if (currentPlayingAudio === audio) {
+        if (currentPlayingAudio && currentPlayingAudio._parentCard === card) {
           currentSoundName.textContent = newName;
         }
       }
@@ -938,25 +1183,15 @@ function createSoundCard(sound) {
         {
           label: "Remove",
           action: async () => {
-            audio.pause();
-            unregisterAudio(audio);
-            if (currentPlayingAudio === audio) {
-              currentPlayingAudio = null;
-              currentPlayingCard = null;
-              syncMuteOthers(null);
-              updatePanelUI();
-            }
-            await window.electronAPI.removeSound(filePath);
-            card.remove();
-            rebuildHotkeyMap();
+            await removeCard();
           }
         },
         {
           type: "slider",
           value: audio._baseVolume ?? 1,
           onchange: (v) => {
-            setAudioBaseVolume(audio, v);
-            if (currentPlayingAudio === audio) {
+            updateCardBaseVolume(card, v);
+            if (currentPlayingAudio && currentPlayingAudio._parentCard === card) {
               panelVolume.value = v * 100;
               volumeDisplay.textContent = Math.round(v * 100);
             }
@@ -999,6 +1234,8 @@ addSoundBtn.onclick = async () => {
   }
 };
 
+const activePushLoopKeys = new Map();
+
 document.addEventListener("keydown", (event) => {
   if (event.defaultPrevented || event.repeat) {
     return;
@@ -1019,8 +1256,48 @@ document.addEventListener("keydown", (event) => {
   }
 
   event.preventDefault();
-  const soundImageWrapper = targetCard.querySelector(".sound-image-wrapper");
-  if (soundImageWrapper) {
-    soundImageWrapper.click();
+  const mode = getCurrentReproductionMode();
+  if (mode === "push-loop") {
+    if (!activePushLoopKeys.has(event.code)) {
+      if (typeof targetCard._startPushLoop === "function") {
+        targetCard._startPushLoop();
+      }
+      activePushLoopKeys.set(event.code, targetCard);
+    }
+    return;
   }
+
+  if (typeof targetCard._handleModeTrigger === "function") {
+    targetCard._handleModeTrigger();
+  }
+});
+
+document.addEventListener("keyup", (event) => {
+  if (event.defaultPrevented) {
+    return;
+  }
+
+  if (isTypingTarget(event.target)) {
+    return;
+  }
+
+  const activeCard = activePushLoopKeys.get(event.code);
+  if (!activeCard) {
+    return;
+  }
+
+  event.preventDefault();
+  if (typeof activeCard._stopPushLoop === "function") {
+    activeCard._stopPushLoop();
+  }
+  activePushLoopKeys.delete(event.code);
+});
+
+window.addEventListener("blur", () => {
+  activePushLoopKeys.forEach((card) => {
+    if (typeof card._stopPushLoop === "function") {
+      card._stopPushLoop();
+    }
+  });
+  activePushLoopKeys.clear();
 });
